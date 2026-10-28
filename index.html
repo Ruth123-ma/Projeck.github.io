@@ -1,0 +1,1721 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>Stock Gudang — Manajemen Persediaan</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #788397;
+      --line: #e8edf3;
+      --surface: #fff;
+      --canvas: #f5f7fb;
+      --navy: #081b2d;
+      --blue: #1e88e5;
+      --blue-soft: #eaf4ff;
+      --green: #15966a;
+      --green-soft: #e9f8f1;
+      --amber: #bf7a13;
+      --amber-soft: #fff5df;
+      --red: #d34c55;
+      --red-soft: #fff0f0;
+      --shadow: 0 12px 30px rgb(23 32 51 / 5%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--canvas); color: var(--ink); }
+    button, input, select, textarea { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button { cursor: pointer; }
+    .app-shell { min-height: 100vh; }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; z-index: 20; display: flex; width: 280px;
+      flex-direction: column; padding: 24px 16px 18px; background: var(--navy); color: #d3d9e6;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; padding: 3px 10px 26px; }
+    .brand-mark {
+      display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px;
+      background: linear-gradient(145deg, #5b7df8, #3560db); color: #fff; font-size: 19px;
+      box-shadow: 0 8px 18px rgb(45 87 221 / 35%);
+    }
+    .brand strong { display: block; color: #fff; font-size: 13px; letter-spacing: .12em; }
+    .brand small { display: block; margin-top: 4px; color: #8590a6; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+    .nav-label { padding: 8px 11px 9px; color: #77839b; font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .nav-list { display: grid; gap: 5px; }
+    .nav-link {
+      display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border: 0;
+      border-radius: 9px; background: transparent; color: #c4cbd7; text-align: left; font-size: 13px;
+      font-weight: 650; transition: background .15s, color .15s;
+    }
+    .nav-link:hover { background: rgb(255 255 255 / 6%); color: #fff; }
+    .nav-link.active { background: #1e88e5; color: #fff; box-shadow: 0 7px 16px rgb(23 68 190 / 24%); }
+    .nav-icon { display: inline-grid; width: 20px; place-items: center; font-size: 16px; }
+    .sidebar-bottom { margin-top: auto; }
+    .storage-note { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid rgb(255 255 255 / 6%); border-radius: 10px; background: rgb(255 255 255 / 5%); }
+    .storage-note strong { color: #ecf1fa; font-size: 11px; font-weight: 600; }
+    .storage-note strong::first-letter { color: #31c998; }
+    .storage-note span { display: none; }
+    .workspace { min-height: 100vh; margin-left: 280px; }
+    .topbar {
+      position: sticky; top: 0; z-index: 10; display: flex; min-height: 74px; align-items: center;
+      justify-content: space-between; gap: 18px; padding: 14px 34px; border-bottom: 1px solid var(--line);
+      background: rgb(255 255 255 / 92%); backdrop-filter: blur(12px);
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .menu-toggle { display: none; }
+    .breadcrumb { color: var(--muted); font-size: 12px; }
+    .breadcrumb strong { color: var(--ink); font-weight: 750; }
+    .topbar-right { display: flex; align-items: center; gap: 13px; }
+    .date-chip, .local-chip { display: inline-flex; align-items: center; gap: 7px; color: #667187; font-size: 11px; font-weight: 650; }
+    .local-chip { padding: 8px 10px; border: 1px solid #dce5ff; border-radius: 999px; background: #f4f7ff; color: #4c65ac; }
+    .avatar { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; background: #e8edff; color: #435ed0; font-size: 12px; font-weight: 800; }
+    main { max-width: 1500px; margin: 0 auto; padding: 30px 34px 52px; }
+    .page { display: none; }
+    .page.active { display: block; animation: appear .18s ease-out; }
+    @keyframes appear { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 23px; }
+    .page-heading h1 { margin: 0; font-size: clamp(23px, 3vw, 29px); letter-spacing: -.045em; }
+    .page-heading p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+    .heading-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+    .button {
+      display: inline-flex; min-height: 39px; align-items: center; justify-content: center; gap: 8px;
+      padding: 9px 14px; border: 1px solid transparent; border-radius: 9px; background: var(--blue);
+      color: #fff; font-size: 12px; font-weight: 750; text-decoration: none; transition: .15s;
+    }
+    .button:hover { filter: brightness(.96); transform: translateY(-1px); }
+    .button.secondary { border-color: var(--line); background: #fff; color: #465166; }
+    .button.danger { background: var(--red); }
+    .button.success { background: var(--green); }
+    .button.small { min-height: 32px; padding: 6px 10px; font-size: 11px; }
+    .button:disabled { cursor: not-allowed; opacity: .55; transform: none; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .stat-card, .panel {
+      border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow);
+    }
+    .stat-card { min-height: 132px; padding: 18px; }
+    .stat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .stat-label { color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .035em; }
+    .stat-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 11px; background: var(--blue-soft); color: var(--blue); font-size: 16px; }
+    .stat-icon.green { background: var(--green-soft); color: var(--green); }
+    .stat-icon.amber { background: var(--amber-soft); color: var(--amber); }
+    .stat-icon.red { background: var(--red-soft); color: var(--red); }
+    .stat-value { margin-top: 12px; font-size: 28px; font-weight: 850; letter-spacing: -.04em; }
+    .stat-foot { margin-top: 4px; color: #8a94a5; font-size: 10px; }
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(270px, .9fr); gap: 16px; }
+    .panel { overflow: hidden; }
+    .panel + .panel { margin-top: 16px; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 19px; border-bottom: 1px solid var(--line); }
+    .panel-header h2 { margin: 0; font-size: 14px; letter-spacing: -.02em; }
+    .panel-header p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
+    .panel-body { padding: 18px 19px; }
+    .text-link { padding: 0; border: 0; background: none; color: var(--blue); font-size: 11px; font-weight: 750; }
+    .table-wrap { width: 100%; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: 11px 15px; background: #f8f9fc; color: #828da0; font-size: 9px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; white-space: nowrap; }
+    td { padding: 12px 15px; border-top: 1px solid #edf0f5; color: #475268; font-size: 11px; vertical-align: middle; }
+    tbody tr:hover { background: #fbfcfe; }
+    td strong { color: var(--ink); font-weight: 750; }
+    .code { color: #61708a; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+    .muted { color: var(--muted); }
+    .right { text-align: right; }
+    .nowrap { white-space: nowrap; }
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 999px; font-size: 9px; font-weight: 800; white-space: nowrap; }
+    .badge.normal, .badge.in { background: var(--green-soft); color: #108257; }
+    .badge.low { background: var(--amber-soft); color: #a76b0e; }
+    .badge.critical, .badge.out { background: var(--red-soft); color: #bd414a; }
+    .badge.neutral { background: #eff2f7; color: #667187; }
+    .empty { padding: 34px 15px; color: #8a94a5; text-align: center; font-size: 12px; }
+    .alert-list { display: grid; gap: 10px; }
+    .alert-item { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #f4e4c4; border-radius: 10px; background: #fffbf1; }
+    .alert-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: #e4a126; }
+    .alert-item strong { display: block; color: #424a59; font-size: 11px; }
+    .alert-item small { display: block; margin-top: 3px; color: #8b816d; font-size: 10px; }
+    .quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .quick-action { display: grid; min-height: 88px; place-items: center; gap: 8px; padding: 12px 7px; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: #59657a; font-size: 10px; font-weight: 750; }
+    .quick-action:hover { border-color: #cbd6fa; background: #f9faff; }
+    .quick-action span:first-child { color: var(--blue); font-size: 20px; }
+    .team-member-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 23px; }
+    .team-member-card { display: flex; min-width: 0; align-items: center; gap: 14px; padding: 15px; border: 1px solid #e3eaf4; border-radius: 12px; background: #f2f6fb; color: var(--ink); text-align: left; transition: border-color .15s, background .15s, transform .15s; }
+    .team-member-card:hover { transform: translateY(-2px); border-color: #b9d1ff; background: #edf4ff; }
+    .team-avatar { display: grid; flex: 0 0 46px; width: 46px; height: 46px; place-items: center; border-radius: 50%; background: #3b82f6; color: #fff; font-size: 14px; font-weight: 850; }
+    .team-member-copy { min-width: 0; }
+    .team-member-copy strong { display: block; overflow: hidden; color: #172033; font-size: 13px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+    .team-member-copy small { display: block; margin-top: 4px; color: #718096; font-size: 10px; }
+    .team-count { color: #667187; font-size: 10px; font-weight: 800; white-space: nowrap; }
+    .team-profile-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+    .team-profile-head .team-avatar { width: 58px; height: 58px; flex-basis: 58px; font-size: 17px; }
+    .team-profile-head h3 { margin: 0; font-size: 16px; }
+    .team-profile-head p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
+    .team-profile-contact { padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: #f8fafc; color: #667187; font-size: 11px; line-height: 1.6; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; padding: 15px 17px; border-bottom: 1px solid var(--line); }
+    .field { display: grid; min-width: 0; gap: 6px; }
+    .field label, .field-label { color: #68748a; font-size: 10px; font-weight: 750; }
+    input, select, textarea {
+      width: 100%; min-height: 39px; padding: 9px 11px; border: 1px solid #dfe4ec; border-radius: 8px;
+      outline: 0; background: #fff; color: #344055; font-size: 11px; transition: border-color .15s, box-shadow .15s;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    input:focus, select:focus, textarea:focus { border-color: #8ca5fa; box-shadow: 0 0 0 3px rgb(56 103 237 / 10%); }
+    input::placeholder, textarea::placeholder { color: #a3acba; }
+    .search-field { flex: 1 1 220px; }
+    .compact-field { width: 165px; }
+    .report-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px 18px; }
+    .summary-box { padding: 13px 15px; border-radius: 10px; background: #f8f9fc; }
+    .summary-box span { display: block; color: #7d8798; font-size: 10px; font-weight: 700; }
+    .summary-box strong { display: block; margin-top: 7px; font-size: 20px; }
+    .report-heading { align-items: center; }
+    .report-heading-meta { display: grid; justify-items: start; gap: 8px; }
+    .report-archive-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 8px; background: #eef4ff; color: #315fd4; font-size: 10px; font-weight: 800; }
+    .report-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+    .button.report-pdf { border-color: #ffd5d8; background: #fff3f4; color: #c62943; }
+    .button.report-excel { border-color: #b7efd5; background: #effcf5; color: #07875c; }
+    .report-toolbar { justify-content: space-between; }
+    .report-toolbar-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+    .report-period-label { color: #42516a; font-size: 11px; font-weight: 750; }
+    .report-block { margin-top: 18px; border-radius: 12px; }
+    .report-block .panel-header { padding: 18px 22px 14px; }
+    .report-block .panel-header h2 { font-size: 16px; }
+    .report-period-caption { margin-top: 5px; color: #78869c; font-size: 11px; }
+    .report-table th { padding: 12px 16px; font-size: 10px; }
+    .report-table td { padding: 13px 16px; font-size: 11px; }
+    .report-quantity-in { color: #11835d; font-weight: 800; }
+    .report-quantity-out { color: #e11d48; font-weight: 800; }
+    .report-period-label { display: block; }
+    .form-layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(250px, .75fr); align-items: start; gap: 16px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+    .form-grid .span-2 { grid-column: span 2; }
+    .form-card { padding: 20px; }
+    .form-card h2 { margin: 0; font-size: 15px; }
+    .form-card > p { margin: 6px 0 18px; color: var(--muted); font-size: 11px; }
+    .form-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+    .input-transaction-card { margin-bottom: 20px; padding: 0; border-radius: 22px; }
+    .input-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 24px 17px; border-bottom: 1px solid #edf0f5; }
+    .input-card-heading h2 { margin: 0; color: #172033; font-size: 18px; font-weight: 850; }
+    .input-card-heading p { margin: 5px 0 0; color: #8a97aa; font-size: 11px; }
+    .auto-fill-badge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #d5e5ff; border-radius: 999px; background: #f2f7ff; color: #3472d5; font-size: 10px; font-weight: 800; }
+    .input-form-body { padding: 27px 24px 24px; }
+    .input-primary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    .input-detail-grid { display: grid; grid-template-columns: 1.05fr 1.1fr 1.1fr 1.1fr; gap: 18px; margin-top: 22px; }
+    .input-storage-grid { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 18px; margin-top: 22px; }
+    .input-transaction-card .field { gap: 8px; }
+    .input-transaction-card .field label { color: #68748a; font-size: 10px; font-weight: 800; letter-spacing: .045em; text-transform: uppercase; }
+    .input-control-wrap { position: relative; }
+    .input-control-wrap > span { position: absolute; top: 50%; left: 13px; z-index: 1; color: #98a6ba; font-size: 14px; transform: translateY(-50%); pointer-events: none; }
+    .input-transaction-card input:not([type="hidden"]), .input-transaction-card select { min-height: 45px; padding: 10px 12px 10px 39px; border-color: #e2e8f0; border-radius: 12px; background: #f8fafc; font-size: 12px; }
+    .input-transaction-card input[readonly] { background: #f0f4f8; color: #78869c; }
+    .input-date-parts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+    .input-date-parts input { padding: 9px 5px !important; text-align: center; }
+    .input-storage-grid .input-control-wrap select { background: #f2f7ff; border-color: #d5e5ff; color: #2456d6; font-weight: 750; }
+    .input-save-button { width: 100%; min-height: 47px; border-radius: 12px; background: #2861ed; box-shadow: 0 7px 14px rgb(40 97 237 / 19%); font-size: 13px; }
+    .output-notes-field { margin-top: 20px; }
+    .info-box { padding: 15px; border: 1px solid #dce6ff; border-radius: 11px; background: #f5f8ff; }
+    .info-box strong { display: block; color: #405cae; font-size: 12px; }
+    .info-box p { margin: 7px 0 0; color: #7583aa; font-size: 10px; line-height: 1.6; }
+    .stock-preview { margin-top: 13px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; }
+    .stock-preview span { color: #838da0; font-size: 10px; }
+    .stock-preview strong { display: block; margin-top: 5px; font-size: 19px; }
+    .attendance-grid { display: grid; grid-template-columns: minmax(250px, .75fr) minmax(0, 1.5fr); align-items: start; gap: 16px; }
+    .history-panel { margin-top: 24px; border-radius: 20px; }
+    .history-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 21px 23px 15px; border-bottom: 1px solid #edf0f5; }
+    .history-heading h2 { margin: 0; color: #172033; font-size: 17px; font-weight: 850; }
+    .history-heading p { margin: 5px 0 0; color: #8a97aa; font-size: 11px; }
+    .history-tools { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .history-search { width: 205px; }
+    .history-search input { min-height: 38px; border-radius: 11px; background: #f9fafc; font-weight: 650; }
+    .month-filter { display: flex; align-items: center; gap: 8px; color: #69758a; font-size: 10px; font-weight: 850; text-transform: uppercase; white-space: nowrap; }
+    .month-filter select { width: 126px; min-height: 38px; border-radius: 11px; background: #f9fafc; color: #344055; font-size: 11px; font-weight: 700; text-transform: none; }
+    .export-history { min-height: 37px; border-radius: 11px; padding: 8px 12px; }
+    .history-table th { padding-top: 13px; padding-bottom: 13px; font-size: 9px; }
+    .history-table td { padding-top: 13px; padding-bottom: 13px; }
+    .quantity-in { color: #079669; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 850; }
+    .quantity-out { color: #d34c55; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 850; }
+    .time-chip { display: inline-block; padding: 9px 11px; border-radius: 8px; background: #f6f8fb; color: #4a5870; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 800; }
+    .month-chip { display: inline-flex; padding: 5px 10px; border: 1px solid #d5e5ff; border-radius: 999px; background: #f2f7ff; color: #3472d5; font-size: 9px; font-weight: 750; }
+    .history-number { color: #8691a3; text-align: center; }
+    .history-code { color: #2563eb; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 850; }
+    .month-stock-page { margin-top: 0; }
+    .month-stock-page .toolbar { justify-content: space-between; }
+    .status-line { display: flex; flex-wrap: wrap; gap: 8px; padding: 15px 19px; border-bottom: 1px solid var(--line); }
+    .status-line .badge { padding: 7px 10px; }
+    .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; padding: 18px; background: rgb(10 18 34 / 52%); }
+    .modal-backdrop.open { display: grid; }
+    .modal { width: min(520px, 100%); max-height: min(90vh, 760px); overflow: auto; border-radius: 16px; background: #fff; box-shadow: 0 25px 80px rgb(0 0 0 / 20%); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 19px 21px; border-bottom: 1px solid var(--line); }
+    .modal-header h2 { margin: 0; font-size: 16px; }
+    .close-button { display: grid; width: 30px; height: 30px; place-items: center; border: 0; border-radius: 8px; background: #f1f3f7; color: #647087; font-size: 17px; }
+    .modal-content { padding: 20px 21px; }
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 70; max-width: min(420px, calc(100vw - 32px)); padding: 12px 16px; border-radius: 10px; background: #152038; color: #fff; box-shadow: 0 10px 25px rgb(0 0 0 / 17%); font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(9px); transition: .2s; }
+    .toast.show { opacity: 1; transform: none; }
+    .toast.error { background: #a82f39; }
+    .footnote { margin: 15px 2px 0; color: #8d96a6; font-size: 10px; line-height: 1.6; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 1000px) {
+      .sidebar { width: 220px; }
+      .workspace { margin-left: 220px; }
+      main { padding-right: 22px; padding-left: 22px; }
+      .topbar { padding-right: 22px; padding-left: 22px; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-grid { grid-template-columns: minmax(0, 1.3fr) minmax(235px, .8fr); }
+      .team-member-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .sidebar { width: 252px; transform: translateX(-100%); transition: transform .2s; box-shadow: 15px 0 35px rgb(0 0 0 / 12%); }
+      .sidebar.open { transform: translateX(0); }
+      .workspace { margin-left: 0; }
+      .topbar { min-height: 64px; padding: 11px 16px; }
+      .menu-toggle { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: #465166; }
+      main { padding: 23px 15px 40px; }
+      .date-chip { display: none; }
+      .page-heading { flex-direction: column; }
+      .heading-actions { width: 100%; }
+      .dashboard-grid, .form-layout, .attendance-grid { grid-template-columns: 1fr; }
+      .input-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .input-storage-grid { grid-template-columns: 1fr; }
+      .toolbar { align-items: stretch; }
+      .report-heading { align-items: flex-start; }
+      .report-actions { width: 100%; }
+      .report-toolbar, .report-toolbar-controls { align-items: stretch; }
+      .report-toolbar-controls { width: 100%; }
+      .compact-field { flex: 1 1 130px; width: auto; }
+      .quick-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .history-heading { align-items: stretch; flex-direction: column; padding: 17px 15px; }
+      .history-tools { align-items: stretch; flex-wrap: wrap; justify-content: flex-start; }
+      .history-search { flex: 1 1 180px; width: auto; }
+      .month-filter { flex: 1 1 170px; justify-content: space-between; }
+      .month-filter select { flex: 1; }
+      .export-history { flex: 1; }
+    }
+    @media (max-width: 440px) {
+      .stats-grid { gap: 9px; }
+      .stat-card { min-height: 119px; padding: 13px; }
+      .stat-value { font-size: 24px; }
+      .stat-label { font-size: 9px; }
+      .stat-icon { width: 32px; height: 32px; }
+      .form-grid, .report-summary { grid-template-columns: 1fr; }
+      .form-grid .span-2 { grid-column: auto; }
+      .input-primary-grid, .input-detail-grid { grid-template-columns: 1fr; }
+      .input-card-heading { align-items: flex-start; flex-direction: column; padding: 19px 16px 14px; }
+      .input-form-body { padding: 20px 16px; }
+      .team-member-grid { grid-template-columns: 1fr; padding: 15px; }
+      .local-chip { font-size: 0; width: 32px; height: 32px; justify-content: center; padding: 0; }
+      .local-chip span { font-size: 13px; }
+    }
+    @media print {
+      .sidebar, .topbar, .no-print, .page-heading .heading-actions, .toast { display: none !important; }
+      .workspace { margin: 0; }
+      main { max-width: none; padding: 0; }
+      .page { display: none !important; }
+      .page.active { display: block !important; }
+      body[data-print-history] .page.active > :not(.history-panel),
+      body[data-print-history] .history-tools { display: none !important; }
+      body[data-print-report] .report-filter-panel { display: none !important; }
+      body { background: #fff; }
+      .panel, .stat-card { box-shadow: none; break-inside: avoid; }
+      .report-block { break-inside: auto; }
+      .report-table tr { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">▦</div>
+        <div><strong>STOCK GUDANG</strong><small>Manajemen persediaan</small></div>
+      </div>
+      <div class="nav-label">Menu utama</div>
+      <nav class="nav-list">
+        <button class="nav-link active" data-page="dashboard"><span class="nav-icon">◉</span>Dashboard</button>
+        <button class="nav-link" data-page="input"><span class="nav-icon">⇩</span>Input</button>
+        <button class="nav-link" data-page="output"><span class="nav-icon">⇧</span>Output</button>
+        <button class="nav-link" data-page="stock"><span class="nav-icon">☷</span>Daftar Stock</button>
+        <button class="nav-link" data-page="reports"><span class="nav-icon">⌁</span>Laporan Rekap</button>
+        <button class="nav-link" data-page="stock-report"><span class="nav-icon">▤</span>Laporan Stok</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="storage-note">
+          <strong>● &nbsp;Live Monitoring</strong>
+        </div>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-toggle" id="menuToggle" aria-label="Buka navigasi">☰</button>
+          <div class="breadcrumb">Stock Gudang <span aria-hidden="true">/</span> <strong id="currentPageLabel">Dashboard</strong></div>
+        </div>
+        <div class="topbar-right">
+          <span class="date-chip"><span>▣</span><span id="todayLabel"></span></span>
+          <span class="local-chip"><span aria-hidden="true">●</span> Mode lokal</span>
+          <span class="avatar" aria-label="Admin">AD</span>
+        </div>
+      </header>
+
+      <main>
+        <section class="page active" id="page-dashboard" aria-labelledby="dashboardTitle">
+          <div class="page-heading">
+            <div><h1 id="dashboardTitle">Dashboard</h1><p>Ringkasan kondisi persediaan dan aktivitas gudang.</p></div>
+            <div class="heading-actions">
+              <button class="button secondary" data-navigate="reports"><span>▥</span> Lihat laporan</button>
+              <button class="button" data-navigate="input"><span>＋</span> Catat barang masuk</button>
+            </div>
+          </div>
+          <div class="stats-grid">
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">JENIS MATERIAL</span><span class="stat-icon">▤</span></div><div class="stat-value" id="dashboardMaterials">0</div><div class="stat-foot">Material terdaftar</div></article>
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">TOTAL SALDO STOK</span><span class="stat-icon green">▣</span></div><div class="stat-value" id="dashboardStock">0</div><div class="stat-foot">Jumlah satuan gabungan</div></article>
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">STOK PERLU DIPERIKSA</span><span class="stat-icon red">!</span></div><div class="stat-value" id="dashboardCritical">0</div><div class="stat-foot">Rendah atau di bawah minimum</div></article>
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">TRANSAKSI HARI INI</span><span class="stat-icon amber">↕</span></div><div class="stat-value" id="dashboardTransactions">0</div><div class="stat-foot">Barang masuk dan keluar</div></article>
+          </div>
+          <section class="panel team-panel">
+            <div class="panel-header">
+              <div><h2>Tim Gudang &amp; Tata Usaha</h2><p>Klik anggota untuk melihat profil digital</p></div>
+              <span class="team-count" id="teamMemberCount">4 Personel</span>
+            </div>
+            <div class="team-member-grid" id="teamMemberGrid"></div>
+          </section>
+          <div class="dashboard-grid">
+            <section class="panel">
+              <div class="panel-header"><div><h2>Aktivitas transaksi terbaru</h2><p>Riwayat pergerakan material gudang</p></div><button class="text-link" data-navigate="reports">Lihat laporan →</button></div>
+              <div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Material</th><th>Jenis</th><th>Jumlah</th><th>Keterangan</th></tr></thead><tbody id="dashboardTransactionsTable"></tbody></table></div>
+            </section>
+            <div>
+              <section class="panel">
+                <div class="panel-header"><div><h2>Peringatan stok</h2><p>Material rendah dan kritis</p></div></div>
+                <div class="panel-body"><div class="alert-list" id="dashboardAlerts"></div></div>
+              </section>
+              <section class="panel">
+                <div class="panel-header"><div><h2>Akses cepat</h2><p>Pilih tindakan yang ingin dilakukan</p></div></div>
+                <div class="panel-body">
+                  <div class="quick-actions">
+                    <button class="quick-action" data-navigate="stock"><span>▤</span><span>Kelola stok</span></button>
+                    <button class="quick-action" data-navigate="input"><span>↓</span><span>Barang masuk</span></button>
+                    <button class="quick-action" data-navigate="output"><span>↑</span><span>Barang keluar</span></button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="page-stock" aria-labelledby="stockTitle">
+          <div class="page-heading">
+            <div><h1 id="stockTitle">Daftar stok</h1><p>Kelola master material, jumlah persediaan, dan batas minimum.</p></div>
+            <div class="heading-actions"><button class="button" id="addMaterialButton"><span>＋</span> Tambah material</button></div>
+          </div>
+          <div class="stats-grid">
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">TOTAL MATERIAL</span><span class="stat-icon">▤</span></div><div class="stat-value" id="stockCount">0</div><div class="stat-foot">Jenis material terdaftar</div></article>
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">KONDISI NORMAL</span><span class="stat-icon green">✓</span></div><div class="stat-value" id="stockNormal">0</div><div class="stat-foot">Di atas batas peringatan</div></article>
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">STOK RENDAH</span><span class="stat-icon amber">!</span></div><div class="stat-value" id="stockLow">0</div><div class="stat-foot">Mendekati batas minimum</div></article>
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">STOK KRITIS</span><span class="stat-icon red">!</span></div><div class="stat-value" id="stockCritical">0</div><div class="stat-foot">Sama dengan atau di bawah minimum</div></article>
+          </div>
+          <section class="panel">
+            <div class="toolbar">
+              <div class="field search-field"><label for="stockSearch">Cari barang</label><input id="stockSearch" type="search" placeholder="Cari kode atau nama material"></div>
+              <div class="field compact-field"><label for="stockStatusFilter">Status stok</label><select id="stockStatusFilter"><option value="">Semua status</option><option value="NORMAL">Normal</option><option value="RENDAH">Rendah</option><option value="KRITIS">Kritis</option></select></div>
+              <button class="button secondary" id="exportStockButton"><span>⇩</span> Ekspor CSV</button>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Kode barang</th><th>Nama material</th><th>Stok akhir</th><th>Min. stok</th><th>Satuan</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="stockTable"></tbody></table></div>
+          </section>
+          <p class="footnote">Perubahan jumlah stok hanya dilakukan melalui transaksi masuk/keluar. Edit material hanya memperbarui informasi dan batas minimum.</p>
+        </section>
+
+        <section class="page" id="page-input" aria-labelledby="inputTitle">
+          <div class="page-heading"><div><h1 id="inputTitle">Form Material Masuk Gudang</h1><p>Pencatatan barang masuk berdasarkan kode material.</p></div></div>
+          <section class="panel input-transaction-card">
+            <header class="input-card-heading">
+              <div><h2>Tambah Transaksi Material</h2><p>Pilih Kode Material untuk autofill Nama &amp; Satuan secara otomatis</p></div>
+              <span class="auto-fill-badge"><span aria-hidden="true">ϟ</span> Auto-Fill Active</span>
+            </header>
+            <div class="input-form-body">
+              <form id="inputForm">
+                <input id="inputMaterial" name="materialId" type="hidden">
+                <input id="inputDate" name="date" type="hidden">
+                <div class="input-primary-grid">
+                  <div class="field">
+                    <label for="inputMaterialCode">1. Kode Barang</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">▥</span><input id="inputMaterialCode" type="text" list="inputMaterialCodes" placeholder="Ketik kode (contoh: 40005914)" autocomplete="off" required></div>
+                    <datalist id="inputMaterialCodes"></datalist>
+                  </div>
+                  <div class="field">
+                    <label for="inputMaterialName">2. Nama Material</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">▱</span><input id="inputMaterialName" type="text" placeholder="Nama material otomatis terisi..." readonly></div>
+                  </div>
+                </div>
+                <div class="input-detail-grid">
+                  <div class="field">
+                    <label for="inputQuantity">3. Jumlah Masuk</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">↕</span><input id="inputQuantity" name="quantity" type="number" min="0.01" step="0.01" placeholder="0.00" required></div>
+                  </div>
+                  <div class="field">
+                    <label for="inputUnitDisplay">4. Satuan</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">▰</span><input id="inputUnitDisplay" type="text" placeholder="Pilih kode barang" readonly></div>
+                  </div>
+                  <div class="field">
+                    <label>5. Tgl, Bln, Thn</label>
+                    <div class="input-date-parts">
+                      <input id="inputDateDay" type="number" min="1" max="31" inputmode="numeric" aria-label="Tanggal transaksi" required>
+                      <input id="inputDateMonth" type="number" min="1" max="12" inputmode="numeric" aria-label="Bulan transaksi" required>
+                      <input id="inputDateYear" type="number" min="2000" max="2100" inputmode="numeric" aria-label="Tahun transaksi" required>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="inputTimeDisplay">6. Jam Input</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">◷</span><input id="inputTimeDisplay" type="text" readonly></div>
+                  </div>
+                </div>
+                <div class="input-storage-grid">
+                  <div class="field">
+                    <label for="inputStorageMonth">7. Bulan Simpanan</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">▣</span><select id="inputStorageMonth" name="storageMonth"></select></div>
+                  </div>
+                  <button class="button input-save-button" type="submit"><span aria-hidden="true">＋</span> Simpan Barang Masuk</button>
+                </div>
+              </form>
+            </div>
+          </section>
+          <section class="panel history-panel">
+            <div class="history-heading">
+              <div><h2>Riwayat Material Masuk</h2><p>Daftar transaksi material masuk yang tersimpan di data gudang</p></div>
+              <div class="history-tools">
+                <div class="field history-search"><input id="inputHistorySearch" type="search" placeholder="⌕  Cari material..." aria-label="Cari riwayat barang masuk"></div>
+                <label class="month-filter"><span>Filter bulan:</span><select id="inputHistoryMonth" aria-label="Filter bulan barang masuk"></select></label>
+                <button class="button danger export-history" id="inputHistoryPdf" type="button">▣ PDF</button>
+                <button class="button success export-history" id="inputHistoryExcel" type="button">▣ Excel</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="history-table">
+                <thead><tr><th>No</th><th>Nomor material</th><th>Nama material</th><th class="right">Jumlah</th><th>Satuan</th><th>Tanggal</th><th>Jam</th><th>Bulan</th></tr></thead>
+                <tbody id="inputHistoryTable"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="page" id="page-output" aria-labelledby="outputTitle">
+          <div class="page-heading"><div><h1 id="outputTitle">Form Material Keluar Gudang</h1><p>Pencatatan barang keluar berdasarkan kode material dan ketersediaan stok.</p></div></div>
+          <section class="panel input-transaction-card">
+            <header class="input-card-heading">
+              <div><h2>Tambah Transaksi Material Keluar</h2><p>Pilih Kode Material untuk autofill Nama &amp; Satuan dan periksa saldo yang tersedia</p></div>
+              <span class="auto-fill-badge"><span aria-hidden="true">ϟ</span> Auto-Fill Active</span>
+            </header>
+            <div class="input-form-body">
+              <form id="outputForm">
+                <input id="outputMaterial" name="materialId" type="hidden">
+                <input id="outputDate" name="date" type="hidden">
+                <div class="input-primary-grid">
+                  <div class="field">
+                    <label for="outputMaterialCode">1. Kode Barang</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">▥</span><input id="outputMaterialCode" type="text" list="outputMaterialCodes" placeholder="Ketik kode (contoh: 40005914)" autocomplete="off" required></div>
+                    <datalist id="outputMaterialCodes"></datalist>
+                  </div>
+                  <div class="field">
+                    <label for="outputMaterialName">2. Nama Material</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">▱</span><input id="outputMaterialName" type="text" placeholder="Nama material otomatis terisi..." readonly></div>
+                  </div>
+                </div>
+                <div class="input-detail-grid">
+                  <div class="field">
+                    <label for="outputQuantity">3. Jumlah Keluar</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">↕</span><input id="outputQuantity" name="quantity" type="number" min="0.01" step="0.01" placeholder="0.00" required></div>
+                  </div>
+                  <div class="field">
+                    <label for="outputUnitDisplay">4. Satuan</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">▰</span><input id="outputUnitDisplay" type="text" placeholder="Pilih kode barang" readonly></div>
+                  </div>
+                  <div class="field">
+                    <label>5. Tgl, Bln, Thn</label>
+                    <div class="input-date-parts">
+                      <input id="outputDateDay" type="number" min="1" max="31" inputmode="numeric" aria-label="Tanggal transaksi" required>
+                      <input id="outputDateMonth" type="number" min="1" max="12" inputmode="numeric" aria-label="Bulan transaksi" required>
+                      <input id="outputDateYear" type="number" min="2000" max="2100" inputmode="numeric" aria-label="Tahun transaksi" required>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="outputTimeDisplay">6. Jam Input</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">◷</span><input id="outputTimeDisplay" type="text" readonly></div>
+                  </div>
+                </div>
+                <div class="field output-notes-field">
+                  <label for="outputNotes">Keterangan / Pemakai</label>
+                  <div class="input-control-wrap"><span aria-hidden="true">▤</span><input id="outputNotes" name="notes" maxlength="255" placeholder="Contoh: Pemakaian divisi produksi"></div>
+                </div>
+                <div class="input-storage-grid">
+                  <div class="field">
+                    <label for="outputStorageMonth">7. Bulan Simpanan</label>
+                    <div class="input-control-wrap"><span aria-hidden="true">▣</span><select id="outputStorageMonth" name="storageMonth"></select></div>
+                  </div>
+                  <button class="button danger input-save-button" type="submit"><span aria-hidden="true">↑</span> Simpan Barang Keluar</button>
+                </div>
+                <p class="footnote" id="outputAvailable">Stok tersedia akan ditampilkan setelah kode material dipilih.</p>
+              </form>
+            </div>
+          </section>
+          <section class="panel history-panel">
+            <div class="history-heading">
+              <div><h2>Riwayat Material Keluar</h2><p>Daftar transaksi material keluar yang tersimpan di data gudang</p></div>
+              <div class="history-tools">
+                <div class="field history-search"><input id="outputHistorySearch" type="search" placeholder="⌕  Cari material..." aria-label="Cari riwayat barang keluar"></div>
+                <label class="month-filter"><span>Filter bulan:</span><select id="outputHistoryMonth" aria-label="Filter bulan barang keluar"></select></label>
+                <button class="button danger export-history" id="outputHistoryPdf" type="button">▣ PDF</button>
+                <button class="button success export-history" id="outputHistoryExcel" type="button">▣ Excel</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="history-table">
+                <thead><tr><th>No</th><th>Nomor material</th><th>Nama material</th><th class="right">Jumlah</th><th>Satuan</th><th>Tanggal</th><th>Jam</th><th>Bulan</th></tr></thead>
+                <tbody id="outputHistoryTable"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="page" id="page-reports" aria-labelledby="reportsTitle">
+          <div class="page-heading report-heading">
+            <div class="report-heading-meta">
+              <div><h1 id="reportsTitle">Laporan Material Keluar &amp; Masuk</h1><p>Rekap transaksi material yang masuk dan keluar dari gudang</p></div>
+              <span class="report-archive-badge"><span aria-hidden="true">▣</span> Arsip laporan tersimpan</span>
+            </div>
+            <div class="report-actions">
+              <button class="button report-pdf" id="printReportButton" type="button"><span aria-hidden="true">▧</span> PDF</button>
+              <button class="button report-excel" id="exportReportExcel" type="button"><span aria-hidden="true">▦</span> Excel</button>
+            </div>
+          </div>
+          <section class="panel report-block report-filter-panel">
+            <div class="toolbar report-toolbar">
+              <strong class="report-period-label" id="reportPeriodLabel">Laporan Oktober 2026</strong>
+              <div class="report-toolbar-controls">
+              <div class="field compact-field"><label for="reportMonth">Periode laporan</label><input id="reportMonth" type="month" min="2026-09" value="2026-10"></div>
+              <div class="field search-field"><label for="reportSearch">Cari material</label><input id="reportSearch" type="search" placeholder="Cari kode atau nama material"></div>
+              <button class="button secondary" id="clearReportFilters">Reset filter</button>
+              </div>
+            </div>
+          </section>
+          <section class="panel report-block">
+            <div class="panel-header"><div><h2>Ringkasan Barang Masuk</h2><p class="report-period-caption" id="reportInputPeriod">Periode Oktober 2026</p></div><span class="muted" id="reportInputSummaryCount"></span></div>
+            <div class="table-wrap"><table class="report-table"><thead><tr><th>No</th><th>No. Material</th><th>Nama Barang</th><th>Satuan</th><th class="right">Masuk</th></tr></thead><tbody id="reportInputSummaryTable"></tbody></table></div>
+          </section>
+          <section class="panel report-block">
+            <div class="panel-header"><div><h2>Riwayat Transaksi Masuk</h2><p class="report-period-caption">Rincian material yang masuk pada periode terpilih</p></div><span class="muted" id="reportInputHistoryCount"></span></div>
+            <div class="table-wrap"><table class="report-table"><thead><tr><th>Tanggal</th><th>Kode Material</th><th>Nama Material</th><th class="right">Jumlah Masuk</th><th>User</th><th>Keterangan</th></tr></thead><tbody id="reportInputTable"></tbody></table></div>
+          </section>
+          <section class="panel report-block">
+            <div class="panel-header"><div><h2>Ringkasan Barang Keluar</h2><p class="report-period-caption" id="reportOutputPeriod">Periode Oktober 2026</p></div><span class="muted" id="reportOutputSummaryCount"></span></div>
+            <div class="table-wrap"><table class="report-table"><thead><tr><th>No</th><th>No. Material</th><th>Nama Barang</th><th>Satuan</th><th class="right">Keluar</th></tr></thead><tbody id="reportOutputSummaryTable"></tbody></table></div>
+          </section>
+          <section class="panel report-block">
+            <div class="panel-header"><div><h2>Riwayat Transaksi Keluar</h2><p class="report-period-caption">Rincian material yang keluar pada periode terpilih</p></div><span class="muted" id="reportOutputHistoryCount"></span></div>
+            <div class="table-wrap"><table class="report-table"><thead><tr><th>Tanggal</th><th>Kode Material</th><th>Nama Material</th><th class="right">Jumlah Keluar</th><th>User</th><th>Keterangan</th></tr></thead><tbody id="reportOutputTable"></tbody></table></div>
+          </section>
+          <p class="footnote">Riwayat barang masuk mengikuti bulan simpanan. Riwayat barang keluar mengikuti tanggal transaksi. Data pengguna ditampilkan jika tersedia.</p>
+        </section>
+
+        <section class="page" id="page-stock-report" aria-labelledby="stockReportTitle">
+          <div class="page-heading">
+            <div><h1 id="stockReportTitle">Laporan Stok Gudang</h1><p id="stockReportDescription">Saldo persediaan material pada akhir bulan yang dipilih.</p></div>
+            <div class="heading-actions"><button class="button secondary" id="printStockReportButton" type="button"><span>▧</span> Cetak / PDF</button><button class="button" id="exportMonthlyStockReport" type="button"><span>⇩</span> Ekspor Excel</button></div>
+          </div>
+          <section class="panel month-stock-page">
+            <div class="toolbar">
+              <div class="field compact-field"><label for="stockReportMonth">Periode laporan</label><input id="stockReportMonth" type="month" min="2026-09" value="2026-10"></div>
+              <div class="field search-field"><label for="stockReportSearch">Cari material</label><input id="stockReportSearch" type="search" placeholder="Cari kode atau nama material"></div>
+              <button class="button secondary" id="clearStockReportFilters" type="button">Reset filter</button>
+            </div>
+            <div class="status-line" id="stockReportSummary"></div>
+            <div class="panel-header"><div><h2>Saldo material per akhir bulan</h2><p id="stockReportPeriod">Saldo dihitung dari transaksi sampai tanggal akhir periode.</p></div><span class="muted" id="stockReportCount"></span></div>
+            <div class="table-wrap"><table><thead><tr><th>No</th><th>Kode material</th><th>Nama material</th><th class="right">Saldo akhir</th><th class="right">Stok minimum</th><th>Satuan</th><th>Status</th></tr></thead><tbody id="reportStockTable"></tbody></table></div>
+          </section>
+        </section>
+
+        <section class="page" id="page-attendance" aria-labelledby="attendanceTitle">
+          <div class="page-heading"><div><h1 id="attendanceTitle">Absensi karyawan</h1><p>Catat kehadiran masuk dan pulang tim gudang.</p></div></div>
+          <div class="stats-grid">
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">KARYAWAN HARI INI</span><span class="stat-icon">♙</span></div><div class="stat-value" id="attendanceCount">0</div><div class="stat-foot">Telah dicatat masuk hari ini</div></article>
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">SUDAH ABSEN PULANG</span><span class="stat-icon green">✓</span></div><div class="stat-value" id="attendanceClockedOut">0</div><div class="stat-foot">Selesai bertugas</div></article>
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">BELUM ABSEN PULANG</span><span class="stat-icon amber">◷</span></div><div class="stat-value" id="attendancePending">0</div><div class="stat-foot">Masih bertugas</div></article>
+            <article class="stat-card"><div class="stat-head"><span class="stat-label">TOTAL RIWAYAT</span><span class="stat-icon">▤</span></div><div class="stat-value" id="attendanceHistoryCount">0</div><div class="stat-foot">Catatan absensi tersimpan</div></article>
+          </div>
+          <div class="attendance-grid">
+            <section class="panel form-card">
+              <h2>Catat absensi masuk</h2><p>Masukkan identitas karyawan untuk mencatat waktu masuk.</p>
+              <form id="attendanceForm">
+                <div class="field" style="margin-bottom:13px"><label for="employeeName">Nama karyawan</label><input id="employeeName" name="name" maxlength="100" placeholder="Nama lengkap" required></div>
+                <div class="field" style="margin-bottom:13px"><label for="employeeId">Nomor karyawan</label><input id="employeeId" name="employeeId" maxlength="50" placeholder="Contoh: WH-001" required></div>
+                <div class="field"><label for="employeeRole">Jabatan / bagian</label><input id="employeeRole" name="role" maxlength="100" placeholder="Contoh: Operator Gudang" required></div>
+                <div class="form-actions"><button class="button" type="submit"><span>↪</span> Catat masuk</button></div>
+              </form>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><div><h2>Riwayat absensi</h2><p>Absensi terbaru ditampilkan lebih dahulu</p></div><button class="button secondary small" id="exportAttendanceButton">Ekspor CSV</button></div>
+              <div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>ID karyawan</th><th>Nama</th><th>Jabatan</th><th>Masuk</th><th>Pulang</th><th>Aksi</th></tr></thead><tbody id="attendanceTable"></tbody></table></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="materialModal" role="dialog" aria-modal="true" aria-labelledby="materialModalTitle">
+    <div class="modal">
+      <div class="modal-header"><h2 id="materialModalTitle">Tambah material</h2><button class="close-button" id="closeMaterialModal" type="button" aria-label="Tutup">×</button></div>
+      <div class="modal-content">
+        <form id="materialForm">
+          <input type="hidden" name="id">
+          <div class="form-grid">
+            <div class="field"><label for="materialCode">Kode barang</label><input id="materialCode" name="code" maxlength="50" required placeholder="Contoh: 40005914"></div>
+            <div class="field"><label for="materialUnit">Satuan</label><input id="materialUnit" name="unit" maxlength="20" required placeholder="KG, L, PCS"></div>
+            <div class="field span-2"><label for="materialName">Nama material</label><input id="materialName" name="name" maxlength="150" required placeholder="Nama material"></div>
+            <div class="field"><label for="materialMinimum">Batas minimum stok</label><input id="materialMinimum" name="minimum" type="number" min="0" step="0.01" required value="10"></div>
+            <div class="field" id="openingStockField"><label for="materialOpeningStock">Stok awal</label><input id="materialOpeningStock" name="openingStock" type="number" min="0" step="0.01" value="0"></div>
+          </div>
+          <p class="footnote" id="materialEditNote">Stok awal akan dicatat sebagai transaksi masuk. Setelah dibuat, ubah saldo melalui transaksi masuk atau keluar.</p>
+          <div class="form-actions"><button class="button" type="submit">Simpan material</button><button class="button secondary" type="button" id="cancelMaterialModal">Batal</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="teamMemberModal" role="dialog" aria-modal="true" aria-labelledby="teamMemberModalTitle">
+    <div class="modal">
+      <div class="modal-header"><h2 id="teamMemberModalTitle">Profil Anggota</h2><button class="close-button" id="closeTeamMemberModal" type="button" aria-label="Tutup profil">×</button></div>
+      <div class="modal-content">
+        <div class="team-profile-head">
+          <div class="team-avatar" id="teamProfileInitials"></div>
+          <div><h3 id="teamProfileName"></h3><p id="teamProfileRole"></p></div>
+        </div>
+        <div class="team-profile-contact">Informasi kontak anggota ini belum tersedia.</div>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="./restored-data.js"></script>
+  <script>
+    (() => {
+      "use strict";
+
+      const STORAGE_KEY = "stock-gudang-standalone-v1";
+      const pageLabels = {
+        dashboard: "Dashboard",
+        input: "Input",
+        output: "Output",
+        stock: "Daftar Stock",
+        reports: "Laporan Rekap",
+        "stock-report": "Laporan Stok"
+      };
+      const sampleState = {
+        materials: [
+          { id: "m-40005914", code: "40005914", name: "FERTILIZER:TSP;45% P2O5 MIN;GRANUL", unit: "KG", stock: 120, minimum: 20 },
+          { id: "m-40005942", code: "40005942", name: "FERTILIZER:UREA;46% N;GRANUL", unit: "KG", stock: 76, minimum: 20 },
+          { id: "m-40005946", code: "40005946", name: "FERTILIZER:KIESERITE;25% MGO;21% S", unit: "KG", stock: 12, minimum: 10 },
+          { id: "m-40005947", code: "40005947", name: "FERTILIZER:KCL (MOP);60% K2O;CRYTL", unit: "KG", stock: 8, minimum: 10 },
+          { id: "m-40006222", code: "40006222", name: "FERTILIZER:NPK 16-16-16;GRANUL", unit: "KG", stock: 54, minimum: 15 },
+          { id: "m-40000214", code: "40000214", name: "EMULGATOR", unit: "L", stock: 19, minimum: 10 },
+          { id: "m-91018606", code: "91018606", name: "Minyak Tanah", unit: "L", stock: 6, minimum: 8 },
+          { id: "m-91033657", code: "91033657", name: "PISAU SADAP SODECI", unit: "PCS", stock: 27, minimum: 5 }
+        ],
+        transactions: [],
+        attendance: []
+      };
+      const initialState = window.STOCK_GUDANG_RESTORE || sampleState;
+
+      const $ = (selector, root = document) => root.querySelector(selector);
+      const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+      const number = value => new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(Number(value) || 0);
+      const prettyDate = value => value ? new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${value}T00:00:00`)) : "—";
+      const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      const today = localDate(new Date());
+      const localTime = date => `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+      const preciseLocalTime = date => `${localTime(date)}:${String(date.getSeconds()).padStart(2, "0")}`;
+      const makeId = prefix => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[char]);
+
+      let state;
+      let toastTimer;
+      let restoredSnapshotLoaded = false;
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        restoredSnapshotLoaded = !saved && Boolean(window.STOCK_GUDANG_RESTORE);
+        state = saved ? JSON.parse(saved) : initialState;
+        if (!state || !Array.isArray(state.materials) || !Array.isArray(state.transactions) || !Array.isArray(state.attendance)) {
+          throw new Error("Struktur data lokal tidak valid.");
+        }
+        state.inputHistory ||= [];
+        if (window.STOCK_GUDANG_RESTORE?.version > (state.recoveryVersion || 0)) {
+          const restoredInputIds = new Set(window.STOCK_GUDANG_RESTORE.inputHistory.map(item => item.id));
+          const localInputHistory = state.inputHistory.filter(item => !restoredInputIds.has(item.id));
+          const restoredTransactionIds = new Set(window.STOCK_GUDANG_RESTORE.transactions.map(item => item.id));
+          const localTransactions = state.transactions.filter(item => !restoredTransactionIds.has(item.id));
+          state.inputHistory = [...window.STOCK_GUDANG_RESTORE.inputHistory, ...localInputHistory];
+          state.transactions = [...window.STOCK_GUDANG_RESTORE.transactions, ...localTransactions];
+          state.recoveryVersion = window.STOCK_GUDANG_RESTORE.version;
+          restoredSnapshotLoaded = true;
+        }
+      } catch (error) {
+        $("#toast").textContent = `Data lokal tidak dapat dibaca: ${error.message}`;
+        $("#toast").classList.add("show", "error");
+        state = initialState;
+      }
+
+      function saveState() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          return true;
+        } catch (error) {
+          showToast(`Data gagal disimpan di browser: ${error.message}`, true);
+          return false;
+        }
+      }
+
+      function showToast(message, isError = false) {
+        const toast = $("#toast");
+        toast.textContent = message;
+        toast.classList.toggle("error", isError);
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 3200);
+      }
+
+      function statusFor(material) {
+        if (Number(material.stock) <= Number(material.minimum)) return "KRITIS";
+        if (Number(material.stock) <= Number(material.minimum) * 1.5) return "RENDAH";
+        return "NORMAL";
+      }
+
+      function statusBadge(material) {
+        const status = statusFor(material);
+        const css = status === "KRITIS" ? "critical" : status === "RENDAH" ? "low" : "normal";
+        return `<span class="badge ${css}">${status}</span>`;
+      }
+
+      function transactionBadge(type) {
+        return type === "IN"
+          ? '<span class="badge in">↓ Masuk</span>'
+          : '<span class="badge out">↑ Keluar</span>';
+      }
+
+      const indonesianMonths = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+      const teamMembers = [
+        { id: "firdaus", initials: "MM", name: "M.Firdaus Madjid", role: "Asisten Tata Usaha" },
+        { id: "ermawati", initials: "E", name: "Ermawati", role: "Krani 1 Tata Usaha" },
+        { id: "jumartadi", initials: "J", name: "Jumartadi", role: "Krani Gudang" },
+        { id: "mujiono", initials: "M", name: "Mujiono", role: "Petugas Gudang" }
+      ];
+
+      function monthNameForDate(date) {
+        if (!date) return "";
+        const monthIndex = Number(date.slice(5, 7)) - 1;
+        return indonesianMonths[monthIndex] || "";
+      }
+
+      function monthKeyForHistory(record) {
+        const monthIndex = indonesianMonths.findIndex(month => month.toLocaleLowerCase("id") === String(record.month || "").toLocaleLowerCase("id"));
+        if (monthIndex < 0) return record.date?.slice(0, 7) || "";
+        return `${record.date?.slice(0, 4) || "2026"}-${String(monthIndex + 1).padStart(2, "0")}`;
+      }
+
+      function historyRecords(type) {
+        return type === "IN"
+          ? state.inputHistory || []
+          : state.transactions.filter(transaction => transaction.type === "OUT").map(transaction => ({
+            ...transaction,
+            code: transaction.materialCode || materialById(transaction.materialId)?.code,
+            name: transaction.materialName || materialById(transaction.materialId)?.name,
+            unit: transaction.unit || materialById(transaction.materialId)?.unit,
+            month: transaction.month || monthNameForDate(transaction.date),
+            time: transaction.time || transaction.createdAt?.slice(11, 19) || ""
+          }));
+      }
+
+      function populateHistoryMonthFilter(type) {
+        const select = $(`#${type === "IN" ? "inputHistoryMonth" : "outputHistoryMonth"}`);
+        const records = historyRecords(type);
+        const months = new Map();
+        const monthSources = type === "OUT" ? [...records, ...(state.inputHistory || [])] : records;
+        if (type === "IN") {
+          const years = new Set(monthSources.map(record => record.date?.slice(0, 4)).filter(year => /^\d{4}$/.test(year || "")));
+          if (!years.size) years.add(String(new Date().getFullYear()));
+          [...years].sort((a, b) => b.localeCompare(a)).forEach(year => {
+            indonesianMonths.forEach((month, index) => {
+              months.set(`${year}-${String(index + 1).padStart(2, "0")}`, month);
+            });
+          });
+        } else {
+          monthSources.forEach(record => {
+            const key = monthKeyForHistory(record);
+            if (key) months.set(key, record.month || monthNameForDate(record.date));
+          });
+        }
+        const options = [...months.entries()].sort(([a], [b]) => b.localeCompare(a));
+        const previousValue = select.value;
+        select.innerHTML = options.map(([key, label]) => `<option value="${escapeHTML(key)}">${escapeHTML(label)}</option>`).join("")
+          || '<option value="">Tidak ada data</option>';
+        const currentMonth = localDate(new Date()).slice(0, 7);
+        const defaultMonth = options.some(([key]) => key === currentMonth) ? currentMonth : options[0]?.[0] || "";
+        select.value = options.some(([key]) => key === previousValue) ? previousValue : defaultMonth;
+      }
+
+      function filteredHistory(type) {
+        const isInput = type === "IN";
+        const query = $(`#${isInput ? "inputHistorySearch" : "outputHistorySearch"}`).value.trim().toLocaleLowerCase("id");
+        const month = $(`#${isInput ? "inputHistoryMonth" : "outputHistoryMonth"}`).value;
+        return historyRecords(type).filter(record => {
+          const matchesMonth = !month || monthKeyForHistory(record) === month;
+          const matchesQuery = `${record.code || record.materialCode || ""} ${record.name || record.materialName || ""}`.toLocaleLowerCase("id").includes(query);
+          return matchesMonth && matchesQuery;
+        }).sort((a, b) => `${b.date} ${b.time || ""}`.localeCompare(`${a.date} ${a.time || ""}`));
+      }
+
+      function renderHistory(type) {
+        const isInput = type === "IN";
+        populateHistoryMonthFilter(type);
+        const records = filteredHistory(type);
+        const body = $(`#${isInput ? "inputHistoryTable" : "outputHistoryTable"}`);
+        body.innerHTML = records.length
+          ? records.map((record, index) => `<tr>
+            <td class="history-number">${index + 1}</td>
+            <td><span class="history-code">${escapeHTML(record.code || record.materialCode || "—")}</span></td>
+            <td><strong>${escapeHTML(record.name || record.materialName || "Material dihapus")}</strong></td>
+            <td class="right"><span class="${isInput ? "quantity-in" : "quantity-out"}">${isInput ? "+" : "−"}${number(record.quantity)}</span></td>
+            <td>${escapeHTML(record.unit || "")}</td>
+            <td class="nowrap">${escapeHTML(record.date || "—")}</td>
+            <td><span class="time-chip">${escapeHTML(String(record.time || "").slice(0, 8) || "—")}</span></td>
+            <td><span class="month-chip">${escapeHTML(record.month || monthNameForDate(record.date))}</span></td>
+          </tr>`).join("")
+          : `<tr><td class="empty" colspan="8">Tidak ada riwayat barang ${isInput ? "masuk" : "keluar"} pada bulan yang dipilih.</td></tr>`;
+      }
+
+      function exportHistory(type) {
+        const isInput = type === "IN";
+        const records = filteredHistory(type);
+        const month = $(`#${isInput ? "inputHistoryMonth" : "outputHistoryMonth"}`).value;
+        const filename = `riwayat-material-${isInput ? "masuk" : "keluar"}-${month || "semua"}.csv`;
+        downloadCSV(filename, [
+          ["No", "Nomor material", "Nama material", "Jumlah", "Satuan", "Tanggal", "Jam", "Bulan"],
+          ...records.map((record, index) => [
+            index + 1,
+            record.code || record.materialCode,
+            record.name || record.materialName,
+            record.quantity,
+            record.unit,
+            record.date,
+            record.time,
+            record.month || monthNameForDate(record.date)
+          ])
+        ]);
+      }
+
+      function materialById(id) {
+        return state.materials.find(material => material.id === id);
+      }
+
+      function setPage(name) {
+        if (!pageLabels[name]) return;
+        $$(".page").forEach(page => page.classList.toggle("active", page.id === `page-${name}`));
+        $$(".nav-link").forEach(link => link.classList.toggle("active", link.dataset.page === name));
+        $("#currentPageLabel").textContent = pageLabels[name];
+        $("#sidebar").classList.remove("open");
+        if (name === "input" || name === "output") {
+          refreshMaterialOptions();
+          $(`#${name}Date`).value ||= today;
+          if (name === "input") syncInputMaterial();
+          if (name === "output") {
+            setOutputDateParts($("#outputDate").value || today, true);
+            syncOutputMaterial();
+          }
+          renderHistory(name === "input" ? "IN" : "OUT");
+        }
+        if (name === "reports") renderReports();
+        if (name === "stock-report") renderStockReport();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function renderDashboard() {
+        const count = state.materials.length;
+        const stock = state.materials.reduce((sum, item) => sum + Number(item.stock || 0), 0);
+        const alertMaterials = state.materials.filter(item => statusFor(item) !== "NORMAL");
+        const todayTransactions = state.transactions.filter(item => item.date === today).length;
+        $("#dashboardMaterials").textContent = number(count);
+        $("#dashboardStock").textContent = number(stock);
+        $("#dashboardCritical").textContent = number(alertMaterials.length);
+        $("#dashboardTransactions").textContent = number(todayTransactions);
+        renderTeamMembers();
+
+        const recent = [...state.transactions].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 7);
+        $("#dashboardTransactionsTable").innerHTML = recent.length
+          ? recent.map(transaction => {
+            const material = materialById(transaction.materialId);
+            return `<tr>
+              <td class="nowrap">${prettyDate(transaction.date)}</td>
+              <td><strong>${escapeHTML(material?.name || transaction.materialName || "Material dihapus")}</strong><div class="code">${escapeHTML(material?.code || transaction.materialCode || "")}</div></td>
+              <td>${transactionBadge(transaction.type)}</td>
+              <td class="nowrap"><strong>${number(transaction.quantity)}</strong> ${escapeHTML(material?.unit || transaction.unit || "")}</td>
+              <td>${escapeHTML(transaction.notes || "—")}</td>
+            </tr>`;
+          }).join("")
+          : '<tr><td class="empty" colspan="5">Belum ada transaksi. Tambahkan material atau catat transaksi pertama.</td></tr>';
+
+        const alerts = alertMaterials.sort((a, b) => Number(a.stock) - Number(b.stock)).slice(0, 5);
+        $("#dashboardAlerts").innerHTML = alerts.length
+          ? alerts.map(item => `<div class="alert-item"><span class="alert-dot"></span><div><strong>${escapeHTML(item.name)}</strong><small>${number(item.stock)} ${escapeHTML(item.unit)} tersisa · minimum ${number(item.minimum)} ${escapeHTML(item.unit)}</small></div></div>`).join("")
+          : '<div class="empty">Semua stok dalam kondisi normal.</div>';
+      }
+
+      function renderTeamMembers() {
+        $("#teamMemberCount").textContent = `${number(teamMembers.length)} Personel`;
+        $("#teamMemberGrid").innerHTML = teamMembers.map(member => `<button class="team-member-card" type="button" data-team-member="${escapeHTML(member.id)}" aria-label="Lihat profil ${escapeHTML(member.name)}">
+          <span class="team-avatar" aria-hidden="true">${escapeHTML(member.initials)}</span>
+          <span class="team-member-copy"><strong>${escapeHTML(member.name)}</strong><small>${escapeHTML(member.role)}</small></span>
+        </button>`).join("");
+      }
+
+      function openTeamMemberProfile(id) {
+        const member = teamMembers.find(person => person.id === id);
+        if (!member) {
+          showToast("Profil anggota tidak ditemukan.", true);
+          return;
+        }
+        $("#teamProfileInitials").textContent = member.initials;
+        $("#teamProfileName").textContent = member.name;
+        $("#teamProfileRole").textContent = member.role;
+        $("#teamMemberModal").classList.add("open");
+        $("#closeTeamMemberModal").focus();
+      }
+
+      function closeTeamMemberProfile() {
+        $("#teamMemberModal").classList.remove("open");
+      }
+
+      function renderStock() {
+        const query = $("#stockSearch").value.trim().toLocaleLowerCase("id");
+        const statusFilter = $("#stockStatusFilter").value;
+        const normal = state.materials.filter(item => statusFor(item) === "NORMAL").length;
+        const low = state.materials.filter(item => statusFor(item) === "RENDAH").length;
+        const critical = state.materials.filter(item => statusFor(item) === "KRITIS").length;
+        $("#stockCount").textContent = number(state.materials.length);
+        $("#stockNormal").textContent = number(normal);
+        $("#stockLow").textContent = number(low);
+        $("#stockCritical").textContent = number(critical);
+
+        const materials = state.materials.filter(item => {
+          const matchesQuery = `${item.code} ${item.name}`.toLocaleLowerCase("id").includes(query);
+          return matchesQuery && (!statusFilter || statusFor(item) === statusFilter);
+        }).sort((a, b) => a.name.localeCompare(b.name, "id"));
+        $("#stockTable").innerHTML = materials.length
+          ? materials.map(item => `<tr>
+            <td class="code">${escapeHTML(item.code)}</td>
+            <td><strong>${escapeHTML(item.name)}</strong></td>
+            <td class="nowrap"><strong>${number(item.stock)}</strong> ${escapeHTML(item.unit)}</td>
+            <td class="nowrap">${number(item.minimum)} ${escapeHTML(item.unit)}</td>
+            <td>${escapeHTML(item.unit)}</td>
+            <td>${statusBadge(item)}</td>
+            <td class="nowrap"><button class="button secondary small" data-edit-material="${escapeHTML(item.id)}" type="button">Edit</button></td>
+          </tr>`).join("")
+          : '<tr><td class="empty" colspan="7">Material tidak ditemukan.</td></tr>';
+      }
+
+      function refreshMaterialOptions() {
+        const options = state.materials.slice().sort((a, b) => a.name.localeCompare(b.name, "id"))
+          .map(item => `<option value="${escapeHTML(item.id)}">${escapeHTML(item.code)} — ${escapeHTML(item.name)} (${number(item.stock)} ${escapeHTML(item.unit)})</option>`)
+          .join("");
+        const outputSelect = $("#outputMaterial");
+        const selectedValue = outputSelect.value;
+        outputSelect.innerHTML = `<option value="">Pilih material</option>${options}`;
+        if (state.materials.some(item => item.id === selectedValue)) outputSelect.value = selectedValue;
+        $("#inputMaterialCodes").innerHTML = state.materials
+          .slice().sort((a, b) => a.code.localeCompare(b.code, "id"))
+          .map(item => `<option value="${escapeHTML(item.code)}">${escapeHTML(item.name)}</option>`).join("");
+        $("#outputMaterialCodes").innerHTML = $("#inputMaterialCodes").innerHTML;
+      }
+
+      function syncInputMaterial() {
+        const code = $("#inputMaterialCode").value.trim().toLocaleLowerCase("id");
+        const material = state.materials.find(item => item.code.toLocaleLowerCase("id") === code);
+        $("#inputMaterial").value = material?.id || "";
+        $("#inputMaterialName").value = material?.name || "";
+        $("#inputUnitDisplay").value = material?.unit || "";
+        $("#inputMaterialCode").setCustomValidity(material ? "" : "Masukkan kode material yang terdaftar.");
+      }
+
+      function setInputDateParts(dateValue, updateStorageMonth = false) {
+        const [year, month, day] = dateValue.split("-").map(Number);
+        $("#inputDate").value = dateValue;
+        $("#inputDateDay").value = String(day).padStart(2, "0");
+        $("#inputDateMonth").value = String(month).padStart(2, "0");
+        $("#inputDateYear").value = String(year);
+        if (updateStorageMonth) $("#inputStorageMonth").value = monthNameForDate(dateValue);
+      }
+
+      function updateInputDate() {
+        const day = Number($("#inputDateDay").value);
+        const month = Number($("#inputDateMonth").value);
+        const year = Number($("#inputDateYear").value);
+        const date = new Date(year, month - 1, day);
+        const valid = Number.isInteger(day) && Number.isInteger(month) && Number.isInteger(year)
+          && day > 0 && month > 0 && month <= 12 && year >= 2000 && year <= 2100
+          && date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+        $("#inputDateDay").setCustomValidity(valid ? "" : "Masukkan tanggal yang valid.");
+        $("#inputDateMonth").setCustomValidity(valid ? "" : "Masukkan tanggal yang valid.");
+        $("#inputDateYear").setCustomValidity(valid ? "" : "Masukkan tanggal yang valid.");
+        $("#inputDate").value = valid ? localDate(date) : "";
+        if (valid) $("#inputStorageMonth").value = monthNameForDate($("#inputDate").value);
+      }
+
+      function syncOutputMaterial() {
+        const code = $("#outputMaterialCode").value.trim().toLocaleLowerCase("id");
+        const material = state.materials.find(item => item.code.toLocaleLowerCase("id") === code);
+        $("#outputMaterial").value = material?.id || "";
+        $("#outputMaterialName").value = material?.name || "";
+        $("#outputUnitDisplay").value = material?.unit || "";
+        $("#outputMaterialCode").setCustomValidity(material ? "" : "Masukkan kode material yang terdaftar.");
+        updateOutputPreview();
+      }
+
+      function setOutputDateParts(dateValue, updateStorageMonth = false) {
+        const [year, month, day] = dateValue.split("-").map(Number);
+        $("#outputDate").value = dateValue;
+        $("#outputDateDay").value = String(day).padStart(2, "0");
+        $("#outputDateMonth").value = String(month).padStart(2, "0");
+        $("#outputDateYear").value = String(year);
+        if (updateStorageMonth) $("#outputStorageMonth").value = monthNameForDate(dateValue);
+      }
+
+      function updateOutputDate() {
+        const day = Number($("#outputDateDay").value);
+        const month = Number($("#outputDateMonth").value);
+        const year = Number($("#outputDateYear").value);
+        const date = new Date(year, month - 1, day);
+        const valid = Number.isInteger(day) && Number.isInteger(month) && Number.isInteger(year)
+          && day > 0 && month > 0 && month <= 12 && year >= 2000 && year <= 2100
+          && date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+        $("#outputDateDay").setCustomValidity(valid ? "" : "Masukkan tanggal yang valid.");
+        $("#outputDateMonth").setCustomValidity(valid ? "" : "Masukkan tanggal yang valid.");
+        $("#outputDateYear").setCustomValidity(valid ? "" : "Masukkan tanggal yang valid.");
+        $("#outputDate").value = valid ? localDate(date) : "";
+        if (valid) $("#outputStorageMonth").value = monthNameForDate($("#outputDate").value);
+      }
+
+      function updateOutputStorageMonth() {
+        const month = indonesianMonths.indexOf($("#outputStorageMonth").value);
+        const day = Number($("#outputDateDay").value);
+        const year = Number($("#outputDateYear").value);
+        if (month < 0 || !Number.isInteger(year) || year < 2000 || year > 2100) return;
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const adjustedDay = Math.min(Math.max(day || 1, 1), lastDay);
+        setOutputDateParts(localDate(new Date(year, month, adjustedDay)));
+      }
+
+      function updateOutputPreview() {
+        const selected = materialById($("#outputMaterial").value);
+        $("#outputAvailable").textContent = selected
+          ? `Stok tersedia: ${number(selected.stock)} ${selected.unit}`
+          : "Stok tersedia akan ditampilkan setelah kode material dipilih.";
+        $("#outputQuantity").max = selected ? String(selected.stock) : "";
+        if (selected && Number($("#outputQuantity").value) > Number(selected.stock)) {
+          $("#outputQuantity").setCustomValidity(`Stok tersedia hanya ${number(selected.stock)} ${selected.unit}.`);
+        } else {
+          $("#outputQuantity").setCustomValidity("");
+        }
+      }
+
+      function selectedReportMonth() {
+        return $("#reportMonth").value || "2026-10";
+      }
+
+      function reportMonthLabel(month) {
+        const [year, monthNumber] = month.split("-").map(Number);
+        return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(new Date(year, monthNumber - 1, 1));
+      }
+
+      function monthlyReportRecords(type) {
+        const month = selectedReportMonth();
+        const query = $("#reportSearch").value.trim().toLocaleLowerCase("id");
+        return historyRecords(type).filter(record => {
+          const matchesMonth = type === "IN" ? monthKeyForHistory(record) === month : record.date?.slice(0, 7) === month;
+          const haystack = `${record.code || record.materialCode || ""} ${record.name || record.materialName || ""} ${record.notes || ""}`.toLocaleLowerCase("id");
+          return matchesMonth && (!query || haystack.includes(query));
+        }).sort((a, b) => `${b.date} ${b.time || ""}`.localeCompare(`${a.date} ${a.time || ""}`));
+      }
+
+      function summarizeReportRecords(records) {
+        const summary = new Map();
+        records.forEach(record => {
+          const code = record.code || record.materialCode || "—";
+          const name = record.name || record.materialName || "Material dihapus";
+          const unit = record.unit || "";
+          const key = `${code}\u0000${name}\u0000${unit}`;
+          const current = summary.get(key) || { code, name, unit, quantity: 0 };
+          current.quantity += Number(record.quantity) || 0;
+          summary.set(key, current);
+        });
+        return [...summary.values()].sort((a, b) => a.name.localeCompare(b.name, "id"));
+      }
+
+      function reportUser(record) {
+        const user = record.userName || record.user_name || record.user || record.userId || record.user_id;
+        if (user && typeof user === "object") return String(user.name || user.username || user.id || "—");
+        return String(user || "—");
+      }
+
+      function renderReportSummary(records, type) {
+        const isIncoming = type === "IN";
+        const table = $(`#report${isIncoming ? "Input" : "Output"}SummaryTable`);
+        const summary = summarizeReportRecords(records);
+        const quantityClass = isIncoming ? "report-quantity-in" : "report-quantity-out";
+        table.innerHTML = summary.length
+          ? summary.map((item, index) => `<tr>
+            <td>${index + 1}</td>
+            <td class="code">${escapeHTML(item.code)}</td>
+            <td><strong>${escapeHTML(item.name)}</strong></td>
+            <td>${escapeHTML(item.unit)}</td>
+            <td class="right ${quantityClass}">${number(item.quantity)}</td>
+          </tr>`).join("")
+          : `<tr><td class="empty" colspan="5">Tidak ada ringkasan barang ${isIncoming ? "masuk" : "keluar"} pada periode ini.</td></tr>`;
+        $(`#report${isIncoming ? "Input" : "Output"}SummaryCount`).textContent = `${number(summary.length)} jenis material`;
+      }
+
+      function renderReportTransactions(records, type) {
+        const isIncoming = type === "IN";
+        const table = $(`#report${isIncoming ? "Input" : "Output"}Table`);
+        const quantityClass = isIncoming ? "report-quantity-in" : "report-quantity-out";
+        table.innerHTML = records.length
+          ? records.map(record => {
+            const dateTime = `${prettyDate(record.date)} ${String(record.time || "").slice(0, 5)}`.trim();
+            const quantity = isIncoming ? number(record.quantity) : `- ${number(record.quantity)}`;
+            return `<tr>
+              <td class="nowrap">${escapeHTML(dateTime)}</td>
+              <td class="code">${escapeHTML(record.code || record.materialCode || "—")}</td>
+              <td><strong>${escapeHTML(record.name || record.materialName || "Material dihapus")}</strong></td>
+              <td class="right ${quantityClass}">${quantity}</td>
+              <td>${escapeHTML(reportUser(record))}</td>
+              <td>${escapeHTML(record.notes || "—")}</td>
+            </tr>`;
+          }).join("")
+          : `<tr><td class="empty" colspan="6">Tidak ada transaksi barang ${isIncoming ? "masuk" : "keluar"} pada periode ini.</td></tr>`;
+        $(`#report${isIncoming ? "Input" : "Output"}HistoryCount`).textContent = `${number(records.length)} transaksi`;
+      }
+
+      function stockAtMonthEnd(material, month) {
+        const [year, monthNumber] = month.split("-").map(Number);
+        const endDate = localDate(new Date(year, monthNumber, 0));
+        const balance = state.transactions
+          .filter(transaction => transaction.materialId === material.id && transaction.date <= endDate)
+          .reduce((total, transaction) => total + (transaction.type === "IN" ? Number(transaction.quantity) : -Number(transaction.quantity)), 0);
+        return Number(balance.toFixed(2));
+      }
+
+      function monthlyStockBadge(material, stock) {
+        const status = statusFor({ ...material, stock });
+        const css = status === "KRITIS" ? "critical" : status === "RENDAH" ? "low" : "normal";
+        return `<span class="badge ${css}">${status}</span>`;
+      }
+
+      function renderReports() {
+        const month = selectedReportMonth();
+        const monthLabel = reportMonthLabel(month);
+        const incoming = monthlyReportRecords("IN");
+        const outgoing = monthlyReportRecords("OUT");
+        $("#reportPeriodLabel").textContent = `Laporan ${monthLabel}`;
+        $("#reportInputPeriod").textContent = `Periode ${monthLabel}`;
+        $("#reportOutputPeriod").textContent = `Periode ${monthLabel}`;
+        renderReportSummary(incoming, "IN");
+        renderReportSummary(outgoing, "OUT");
+        renderReportTransactions(incoming, "IN");
+        renderReportTransactions(outgoing, "OUT");
+      }
+
+      function renderStockReport() {
+        const month = $("#stockReportMonth").value || "2026-10";
+        const monthLabel = reportMonthLabel(month);
+        const query = $("#stockReportSearch").value.trim().toLocaleLowerCase("id");
+        const materials = state.materials
+          .filter(item => `${item.code} ${item.name}`.toLocaleLowerCase("id").includes(query))
+          .slice().sort((a, b) => a.name.localeCompare(b.name, "id"));
+        $("#reportStockTable").innerHTML = materials.length
+          ? materials.map((item, index) => {
+            const stock = stockAtMonthEnd(item, month);
+            return `<tr><td class="history-number">${index + 1}</td><td class="code">${escapeHTML(item.code)}</td><td><strong>${escapeHTML(item.name)}</strong></td><td class="right"><strong>${number(stock)}</strong></td><td class="right">${number(item.minimum)}</td><td>${escapeHTML(item.unit)}</td><td>${monthlyStockBadge(item, stock)}</td></tr>`;
+          }).join("")
+          : '<tr><td class="empty" colspan="7">Belum ada data material.</td></tr>';
+        const lowCount = materials.filter(item => statusFor({ ...item, stock: stockAtMonthEnd(item, month) }) !== "NORMAL").length;
+        $("#stockReportPeriod").textContent = `Saldo dihitung sampai akhir ${monthLabel}`;
+        $("#stockReportDescription").textContent = `Saldo persediaan material pada akhir ${monthLabel}.`;
+        $("#stockReportCount").textContent = `${number(materials.length)} material`;
+        $("#stockReportSummary").innerHTML = `<span>Material terdaftar: <strong>${number(materials.length)}</strong></span><span>Perlu diperiksa: <strong>${number(lowCount)}</strong></span><span>Periode: <strong>${escapeHTML(monthLabel)}</strong></span>`;
+      }
+
+      function renderAttendance() {
+        const attendanceToday = state.attendance.filter(record => record.date === today);
+        const completed = attendanceToday.filter(record => record.clockOut).length;
+        $("#attendanceCount").textContent = number(attendanceToday.length);
+        $("#attendanceClockedOut").textContent = number(completed);
+        $("#attendancePending").textContent = number(attendanceToday.length - completed);
+        $("#attendanceHistoryCount").textContent = number(state.attendance.length);
+        const rows = [...state.attendance].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        $("#attendanceTable").innerHTML = rows.length
+          ? rows.map(record => `<tr>
+            <td class="nowrap">${prettyDate(record.date)}</td>
+            <td class="code">${escapeHTML(record.employeeId)}</td>
+            <td><strong>${escapeHTML(record.name)}</strong></td>
+            <td>${escapeHTML(record.role)}</td>
+            <td>${escapeHTML(record.clockIn)}</td>
+            <td>${escapeHTML(record.clockOut || "—")}</td>
+            <td>${record.date === today && !record.clockOut
+              ? `<button class="button secondary small" data-clock-out="${escapeHTML(record.id)}" type="button">Absen pulang</button>`
+              : `<span class="badge ${record.clockOut ? "normal" : "neutral"}">${record.clockOut ? "Selesai" : "Riwayat"}</span>`}</td>
+          </tr>`).join("")
+          : '<tr><td class="empty" colspan="7">Belum ada catatan absensi.</td></tr>';
+      }
+
+      function renderAll() {
+        renderDashboard();
+        renderStock();
+        refreshMaterialOptions();
+        syncInputMaterial();
+        renderReports();
+        renderStockReport();
+        renderHistory("IN");
+        renderHistory("OUT");
+        renderAttendance();
+        updateOutputPreview();
+      }
+
+      function openMaterialModal(material = null) {
+        const form = $("#materialForm");
+        form.reset();
+        form.elements.id.value = material?.id || "";
+        form.elements.code.value = material?.code || "";
+        form.elements.name.value = material?.name || "";
+        form.elements.unit.value = material?.unit || "";
+        form.elements.minimum.value = material ? material.minimum : 10;
+        form.elements.openingStock.value = "0";
+        const editing = Boolean(material);
+        $("#materialModalTitle").textContent = editing ? "Edit material" : "Tambah material";
+        $("#openingStockField").classList.toggle("hidden", editing);
+        $("#materialEditNote").textContent = editing
+          ? `Stok saat ini ${number(material.stock)} ${material.unit}. Perubahan jumlah stok dilakukan melalui transaksi masuk atau keluar.`
+          : "Stok awal akan dicatat sebagai transaksi masuk. Setelah dibuat, ubah saldo melalui transaksi masuk atau keluar.";
+        $("#materialModal").classList.add("open");
+        $("#materialCode").focus();
+      }
+
+      function closeMaterialModal() {
+        $("#materialModal").classList.remove("open");
+      }
+
+      function csvCell(value) {
+        return `"${String(value ?? "").replace(/"/g, '""')}"`;
+      }
+
+      function downloadCSV(filename, rows) {
+        if (!rows.length) {
+          showToast("Tidak ada data untuk diekspor.", true);
+          return;
+        }
+        const csv = "\uFEFF" + rows.map(row => row.map(csvCell).join(";")).join("\r\n");
+        const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showToast("File CSV berhasil diunduh.");
+      }
+
+      function printHistory() {
+        document.body.dataset.printHistory = "true";
+        window.addEventListener("afterprint", () => delete document.body.dataset.printHistory, { once: true });
+        window.print();
+      }
+
+      function printMonthlyReport() {
+        document.body.dataset.printReport = "true";
+        window.addEventListener("afterprint", () => delete document.body.dataset.printReport, { once: true });
+        window.print();
+      }
+
+      function exportStock() {
+        const materials = state.materials.slice().sort((a, b) => a.name.localeCompare(b.name, "id"));
+        downloadCSV("daftar-stok-gudang.csv", [
+          ["Kode barang", "Nama material", "Stok akhir", "Stok minimum", "Satuan", "Status"],
+          ...materials.map(item => [item.code, item.name, item.stock, item.minimum, item.unit, statusFor(item)])
+        ]);
+      }
+
+      function exportMonthlyReport() {
+        const month = selectedReportMonth();
+        const incoming = monthlyReportRecords("IN");
+        const outgoing = monthlyReportRecords("OUT");
+        const inputSummary = summarizeReportRecords(incoming);
+        const outputSummary = summarizeReportRecords(outgoing);
+        const transactionRows = (records, type) => records.map(record => [
+          record.date,
+          record.time || "",
+          record.code || record.materialCode,
+          record.name || record.materialName,
+          type === "OUT" ? -Number(record.quantity) : Number(record.quantity),
+          record.unit,
+          reportUser(record),
+          record.notes
+        ]);
+        downloadCSV(`laporan-material-masuk-keluar-${month}.csv`, [
+          [`Laporan Material Keluar & Masuk - ${reportMonthLabel(month)}`],
+          [],
+          ["RINGKASAN BARANG MASUK"],
+          ["No", "No. Material", "Nama Barang", "Satuan", "Masuk"],
+          ...inputSummary.map((item, index) => [index + 1, item.code, item.name, item.unit, item.quantity]),
+          [],
+          ["RIWAYAT TRANSAKSI MASUK"],
+          ["Tanggal", "Jam", "Kode Material", "Nama Material", "Jumlah Masuk", "Satuan", "User", "Keterangan"],
+          ...transactionRows(incoming, "IN"),
+          [],
+          ["RINGKASAN BARANG KELUAR"],
+          ["No", "No. Material", "Nama Barang", "Satuan", "Keluar"],
+          ...outputSummary.map((item, index) => [index + 1, item.code, item.name, item.unit, item.quantity]),
+          [],
+          ["RIWAYAT TRANSAKSI KELUAR"],
+          ["Tanggal", "Jam", "Kode Material", "Nama Material", "Jumlah Keluar", "Satuan", "User", "Keterangan"],
+          ...transactionRows(outgoing, "OUT")
+        ]);
+      }
+
+      function exportMonthlyStock() {
+        const month = $("#stockReportMonth").value || "2026-10";
+        const materials = state.materials.slice().sort((a, b) => a.name.localeCompare(b.name, "id"));
+        downloadCSV(`laporan-saldo-stok-${month}.csv`, [
+          ["Periode", "Kode barang", "Nama material", "Saldo akhir bulan", "Stok minimum", "Satuan", "Status"],
+          ...materials.map(item => {
+            const stock = stockAtMonthEnd(item, month);
+            return [month, item.code, item.name, stock, item.minimum, item.unit, statusFor({ ...item, stock })];
+          })
+        ]);
+      }
+
+      function exportAttendance() {
+        const records = [...state.attendance].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        downloadCSV("laporan-absensi-gudang.csv", [
+          ["Tanggal", "ID karyawan", "Nama", "Jabatan", "Jam masuk", "Jam pulang"],
+          ...records.map(item => [item.date, item.employeeId, item.name, item.role, item.clockIn, item.clockOut || ""])
+        ]);
+      }
+
+      function recordTransaction(type, form) {
+        const data = new FormData(form);
+        const material = materialById(String(data.get("materialId") || ""));
+        const quantity = Number(data.get("quantity"));
+        const date = String(data.get("date") || "");
+        const storageMonth = String(data.get("storageMonth") || monthNameForDate(date));
+        const notes = String(data.get("notes") || "").trim();
+        if (!material) {
+          showToast("Pilih material yang valid terlebih dahulu.", true);
+          return false;
+        }
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+          showToast("Jumlah harus lebih besar dari nol.", true);
+          return false;
+        }
+        if (!date) {
+          showToast("Tanggal transaksi wajib diisi.", true);
+          return false;
+        }
+        if (type === "OUT" && quantity > Number(material.stock)) {
+          showToast(`Stok tidak cukup. Saldo tersedia ${number(material.stock)} ${material.unit}.`, true);
+          return false;
+        }
+
+        const previousStock = Number(material.stock);
+        material.stock = Number((previousStock + (type === "IN" ? quantity : -quantity)).toFixed(2));
+        const transaction = {
+          id: makeId("tx"),
+          materialId: material.id,
+          materialCode: material.code,
+          materialName: material.name,
+          unit: material.unit,
+          type,
+          quantity,
+          date,
+          month: storageMonth,
+          notes,
+          createdAt: new Date().toISOString()
+        };
+        state.transactions.push(transaction);
+        let inputHistoryRecord = null;
+        if (type === "IN") {
+          const transactionTime = preciseLocalTime(new Date());
+          inputHistoryRecord = {
+            id: `${transaction.id}-history`,
+            materialId: material.id,
+            code: material.code,
+            name: material.name,
+            unit: material.unit,
+            quantity,
+            date,
+            time: transactionTime,
+            month: storageMonth,
+            notes,
+            createdAt: transaction.createdAt
+          };
+          state.inputHistory.push(inputHistoryRecord);
+        }
+        if (!saveState()) {
+          material.stock = previousStock;
+          state.transactions.pop();
+          if (inputHistoryRecord) state.inputHistory.pop();
+          return false;
+        }
+        form.reset();
+        if (type === "IN") {
+          syncInputMaterial();
+          setInputDateParts(today, true);
+        } else {
+          syncOutputMaterial();
+          setOutputDateParts(today, true);
+        }
+        renderAll();
+        showToast(type === "IN" ? "Barang masuk berhasil dicatat." : "Barang keluar berhasil dicatat.");
+        return true;
+      }
+
+      $$(".nav-link").forEach(link => link.addEventListener("click", () => setPage(link.dataset.page)));
+      $$("[data-navigate]").forEach(button => button.addEventListener("click", () => setPage(button.dataset.navigate)));
+      $("#menuToggle").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
+      $("#addMaterialButton").addEventListener("click", () => openMaterialModal());
+      $("#closeMaterialModal").addEventListener("click", closeMaterialModal);
+      $("#cancelMaterialModal").addEventListener("click", closeMaterialModal);
+      $("#materialModal").addEventListener("click", event => {
+        if (event.target === $("#materialModal")) closeMaterialModal();
+      });
+      $("#teamMemberGrid").addEventListener("click", event => {
+        const button = event.target.closest("[data-team-member]");
+        if (button) openTeamMemberProfile(button.dataset.teamMember);
+      });
+      $("#closeTeamMemberModal").addEventListener("click", closeTeamMemberProfile);
+      $("#teamMemberModal").addEventListener("click", event => {
+        if (event.target === $("#teamMemberModal")) closeTeamMemberProfile();
+      });
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+          closeMaterialModal();
+          closeTeamMemberProfile();
+        }
+      });
+
+      $("#stockSearch").addEventListener("input", renderStock);
+      $("#stockStatusFilter").addEventListener("change", renderStock);
+      $("#stockTable").addEventListener("click", event => {
+        const button = event.target.closest("[data-edit-material]");
+        if (button) openMaterialModal(materialById(button.dataset.editMaterial));
+      });
+      $("#exportStockButton").addEventListener("click", exportStock);
+
+      $("#materialForm").addEventListener("submit", event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        const id = String(data.get("id") || "");
+        const code = String(data.get("code") || "").trim();
+        const name = String(data.get("name") || "").trim();
+        const unit = String(data.get("unit") || "").trim();
+        const minimum = Number(data.get("minimum"));
+        const existing = id ? materialById(id) : null;
+        const duplicate = state.materials.find(item => item.code.toLocaleLowerCase("id") === code.toLocaleLowerCase("id") && item.id !== id);
+        if (duplicate) {
+          showToast("Kode barang sudah digunakan material lain.", true);
+          return;
+        }
+        if (!code || !name || !unit || !Number.isFinite(minimum) || minimum < 0) {
+          showToast("Lengkapi data material dengan benar.", true);
+          return;
+        }
+        if (existing) {
+          const previous = { ...existing };
+          Object.assign(existing, { code, name, unit, minimum });
+          if (!saveState()) Object.assign(existing, previous);
+          else {
+            closeMaterialModal();
+            renderAll();
+            showToast("Informasi material berhasil diperbarui.");
+          }
+          return;
+        }
+
+        const openingStock = Number(data.get("openingStock"));
+        if (!Number.isFinite(openingStock) || openingStock < 0) {
+          showToast("Stok awal harus nol atau lebih.", true);
+          return;
+        }
+        const material = { id: makeId("material"), code, name, unit, minimum, stock: openingStock };
+        state.materials.push(material);
+        let openingTransaction = null;
+        if (openingStock > 0) {
+          openingTransaction = {
+            id: makeId("tx"), materialId: material.id, materialCode: code, materialName: name, unit,
+            type: "IN", quantity: openingStock, date: today, notes: "Stok awal", createdAt: new Date().toISOString()
+          };
+          state.transactions.push(openingTransaction);
+          state.inputHistory.push({
+            id: `${openingTransaction.id}-history`,
+            materialId: material.id,
+            code,
+            name,
+            unit,
+            quantity: openingStock,
+            date: today,
+            time: localTime(new Date()),
+            month: monthNameForDate(today),
+            notes: "Stok awal",
+            createdAt: openingTransaction.createdAt
+          });
+        }
+        if (!saveState()) {
+          state.materials = state.materials.filter(item => item.id !== material.id);
+          if (openingTransaction) {
+            state.transactions = state.transactions.filter(item => item.id !== openingTransaction.id);
+            state.inputHistory = state.inputHistory.filter(item => item.id !== `${openingTransaction.id}-history`);
+          }
+          return;
+        }
+        closeMaterialModal();
+        renderAll();
+        showToast("Material baru berhasil ditambahkan.");
+      });
+
+      $("#inputForm").addEventListener("submit", event => {
+        event.preventDefault();
+        recordTransaction("IN", event.currentTarget);
+      });
+      $("#inputMaterialCode").addEventListener("input", syncInputMaterial);
+      $("#inputDateDay").addEventListener("input", updateInputDate);
+      $("#inputDateMonth").addEventListener("input", updateInputDate);
+      $("#inputDateYear").addEventListener("input", updateInputDate);
+      $("#outputForm").addEventListener("submit", event => {
+        event.preventDefault();
+        recordTransaction("OUT", event.currentTarget);
+      });
+      $("#outputMaterialCode").addEventListener("input", syncOutputMaterial);
+      $("#outputDateDay").addEventListener("input", updateOutputDate);
+      $("#outputDateMonth").addEventListener("input", updateOutputDate);
+      $("#outputDateYear").addEventListener("input", updateOutputDate);
+      $("#outputStorageMonth").addEventListener("change", updateOutputStorageMonth);
+      $("#outputQuantity").addEventListener("input", () => {
+        const material = materialById($("#outputMaterial").value);
+        if (material && Number($("#outputQuantity").value) > Number(material.stock)) {
+          $("#outputQuantity").setCustomValidity(`Stok tersedia hanya ${number(material.stock)} ${material.unit}.`);
+        } else {
+          $("#outputQuantity").setCustomValidity("");
+        }
+      });
+
+      $("#reportSearch").addEventListener("input", renderReports);
+      $("#reportMonth").addEventListener("change", renderReports);
+      $("#clearReportFilters").addEventListener("click", () => {
+        $("#reportSearch").value = "";
+        $("#reportMonth").value = "2026-10";
+        renderReports();
+      });
+      $("#stockReportSearch").addEventListener("input", renderStockReport);
+      $("#stockReportMonth").addEventListener("change", renderStockReport);
+      $("#clearStockReportFilters").addEventListener("click", () => {
+        $("#stockReportSearch").value = "";
+        $("#stockReportMonth").value = "2026-10";
+        renderStockReport();
+      });
+      $("#inputHistorySearch").addEventListener("input", () => renderHistory("IN"));
+      $("#inputHistoryMonth").addEventListener("change", () => renderHistory("IN"));
+      $("#outputHistorySearch").addEventListener("input", () => renderHistory("OUT"));
+      $("#outputHistoryMonth").addEventListener("change", () => renderHistory("OUT"));
+      $("#inputHistoryExcel").addEventListener("click", () => exportHistory("IN"));
+      $("#outputHistoryExcel").addEventListener("click", () => exportHistory("OUT"));
+      $("#inputHistoryPdf").addEventListener("click", printHistory);
+      $("#outputHistoryPdf").addEventListener("click", printHistory);
+      $("#exportReportExcel").addEventListener("click", exportMonthlyReport);
+      $("#exportMonthlyStockReport").addEventListener("click", exportMonthlyStock);
+      $("#printReportButton").addEventListener("click", printMonthlyReport);
+      $("#printStockReportButton").addEventListener("click", () => window.print());
+
+      $("#attendanceForm").addEventListener("submit", event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        const employeeId = String(data.get("employeeId") || "").trim();
+        const name = String(data.get("name") || "").trim();
+        const role = String(data.get("role") || "").trim();
+        if (!employeeId || !name || !role) {
+          showToast("Lengkapi nama, nomor karyawan, dan jabatan.", true);
+          return;
+        }
+        const alreadyPresent = state.attendance.some(record => record.date === today && record.employeeId.toLocaleLowerCase("id") === employeeId.toLocaleLowerCase("id"));
+        if (alreadyPresent) {
+          showToast("Karyawan ini sudah tercatat masuk hari ini.", true);
+          return;
+        }
+        const record = {
+          id: makeId("att"),
+          employeeId,
+          name,
+          role,
+          date: today,
+          clockIn: localTime(new Date()),
+          clockOut: "",
+          createdAt: new Date().toISOString()
+        };
+        state.attendance.push(record);
+        if (!saveState()) {
+          state.attendance.pop();
+          return;
+        }
+        form.reset();
+        renderAttendance();
+        showToast(`Absensi masuk ${name} berhasil dicatat.`);
+      });
+      $("#attendanceTable").addEventListener("click", event => {
+        const button = event.target.closest("[data-clock-out]");
+        if (!button) return;
+        const record = state.attendance.find(item => item.id === button.dataset.clockOut);
+        if (!record || record.date !== today || record.clockOut) {
+          showToast("Absensi ini tidak dapat diperbarui.", true);
+          return;
+        }
+        record.clockOut = localTime(new Date());
+        if (!saveState()) {
+          record.clockOut = "";
+          return;
+        }
+        renderAttendance();
+        showToast(`Absensi pulang ${record.name} berhasil dicatat.`);
+      });
+      $("#exportAttendanceButton").addEventListener("click", exportAttendance);
+
+      $("#todayLabel").textContent = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
+      $("#inputStorageMonth").innerHTML = indonesianMonths.map(month => `<option value="${escapeHTML(month)}">${escapeHTML(month)}</option>`).join("");
+      $("#outputStorageMonth").innerHTML = indonesianMonths.map(month => `<option value="${escapeHTML(month)}">${escapeHTML(month)}</option>`).join("");
+      setInputDateParts(today, true);
+      setOutputDateParts(today, true);
+      const updateTransactionTime = () => {
+        const now = new Date();
+        $("#inputTimeDisplay").value = preciseLocalTime(now);
+        $("#outputTimeDisplay").value = preciseLocalTime(now);
+      };
+      updateTransactionTime();
+      window.setInterval(() => {
+        updateTransactionTime();
+      }, 1000);
+      renderAll();
+      if (restoredSnapshotLoaded && saveState()) {
+        showToast("Data transaksi September dan Oktober berhasil dipulihkan dari database gudang.");
+      }
+    })();
+  </script>
+</body>
+</html>
